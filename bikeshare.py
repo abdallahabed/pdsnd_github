@@ -45,37 +45,37 @@ def load_data(city, month, day):
     """
     Loads data for the specified city and filters by month and day if applicable.
     """
-    df = pd.read_csv(CITY_DATA[city])
+    try:
+        df = pd.read_csv(CITY_DATA[city])
+    except FileNotFoundError:
+        print(f"Error: The file for {city} is missing.")
+        return None
+    except Exception as e:
+        print(f"Error loading data: {e}")
+        return None
+
     df = df.drop(columns=['Unnamed: 0'], errors='ignore')
 
-    # filter the data by month and day
-    df['Start Time'] = pd.to_datetime(df['Start Time'])
-    df['month'] = df['Start Time'].dt.month
-    df['day_of_week'] = df['Start Time'].dt.day_name().str.lower()
-    months = ['january', 'february', 'march', 'april', 'may', 'june']
-    if month != 'all':
-        month_index = months.index(month) + 1
-        df = df[df['month'] == month_index]
-    
-    if day != 'all':
-        df = df[df['day_of_week'] == day]
-
-    return df
 
 
 def display_raw_data(df):
     """Displays raw data upon request."""
     row_index = 0
     while True:
-        view_data = input('Would you like to see 5 rows of raw data? Enter yes or no: ').lower()
+        view_data = input('Would you like to see raw data? Enter yes or no: ').strip().lower()
         if view_data == 'yes':
-            print(df.iloc[row_index:row_index+5])
-            row_index += 5
+            try:
+                num_rows = int(input('How many rows would you like to see? (Enter a number): '))
+                print(df.iloc[row_index:row_index+num_rows])
+                row_index += num_rows
+            except ValueError:
+                print("Invalid input. Please enter a number.")
         elif view_data == 'no':
             print("Exiting raw data display.")
             break
         else:
             print("Invalid input. Please enter 'yes' or 'no'.")
+
 
 
 def time_stats(df):
@@ -124,18 +124,21 @@ def user_stats(df):
     print("User Types:")
     print(df['User Type'].value_counts())
 
-    if 'Gender' in df:
+    if 'Gender' in df.columns:
         print("\nGender:")
         print(df['Gender'].value_counts())
-    
-    if 'Birth Year' in df:
-        print("\nBirth Year Stats:")
-        print(f"Earliest: {int(df['Birth Year'].min())}")
-        print(f"Most Recent: {int(df['Birth Year'].max())}")
-        print(f"Most Common: {int(df['Birth Year'].mode()[0])}")
-    
+
+    if 'Birth Year' in df.columns:
+        birth_years = df['Birth Year'].dropna()  # Drop NaN values
+        if not birth_years.empty:
+            print("\nBirth Year Stats:")
+            print(f"Earliest: {int(birth_years.min())}")
+            print(f"Most Recent: {int(birth_years.max())}")
+            print(f"Most Common: {int(birth_years.mode()[0])}")
+
     print("\nThis took %s seconds." % (time.time() - start_time))
     print('-'*40)
+
 
 
 # some visualtizon i learned from the data analysis nano degree , to enhance user experince
@@ -146,8 +149,11 @@ def plot_trip_duration(df):
     plt.title('Trip Duration Distribution')
     plt.xlabel('Trip Duration (seconds)')
     plt.ylabel('Frequency')
-    plt.savefig('trip_duration_distribution.png')  # Save the plot as an image file
+    plt.grid(True)
+    plt.show()
+    plt.savefig('trip_duration_distribution.png')
     plt.close()
+
 
 def plot_popular_stations(df):
     """Plots bar charts for most popular stations."""
